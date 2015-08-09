@@ -1,0 +1,14 @@
+name: ClockBlocked
+main: io.github.mcredwallhp.clockblocked.ClockBlocked
+description: Secret PvE plugin thing
+version: ${project.version}
+
+depend: [WorldEdit, WorldGuard]
+
+commands:
+    clockblocked:
+        description: ClockBlocked root command
+        usage: /clockblocked [subcommand]
+        aliases: [clbl]
+        permission: clockblocked.admin
+        permission-message: You don't have permission to do that.
