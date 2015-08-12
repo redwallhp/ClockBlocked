@@ -15,6 +15,7 @@ Every time the server shuts down, it will advance the currently selected portal.
 
 * Portal WorldGuard regions *must be cuboids*
 * As the plugin replaced air blocks with portal blocks, *the WorldGuard region must not encompass air outside of the portal frame.* Examples: Rectangular regions encompassing the frame work. Portals with a rectangular center and missing corners work if the region only encloses the center and not the frame. A circular portal would work if it had something built around it, so the region corners overlap non-air materials.
+* The most effective way to prepare portals is to build the frame, then use WorldEdit to add the portal blocks, using //fast (which causes block and lighting updates to be delayed until the edit is done) and then //set or //replace to add portal:1 or portal:2 (depending on the portal orientation).
 
 ![Portal Regions](http://i.imgur.com/pC0mf0z.png)
 
