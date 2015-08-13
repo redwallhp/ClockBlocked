@@ -8,6 +8,7 @@ import com.sk89q.worldedit.regions.CuboidRegion;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.Plugin;
@@ -17,6 +18,7 @@ import com.sk89q.worldguard.protection.regions.ProtectedRegion;
 import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
 import com.sk89q.worldedit.bukkit.WorldEditPlugin;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -25,8 +27,11 @@ public final class ClockBlocked extends JavaPlugin implements Listener {
 
 
     String currentPortal;
+    String currentGroup;
     List<String> worldNames;
     List<String> portalRegions;
+    ConfigurationSection portalGroups;
+    Boolean multimode;
 
 
     @Override
@@ -37,7 +42,11 @@ public final class ClockBlocked extends JavaPlugin implements Listener {
         this.getServer().getPluginManager().registerEvents(this, this);
 
         this.unlightPortals();
-        this.lightPortal(this.currentPortal);
+        if (!this.multimode) {
+            this.lightPortal(this.currentPortal);
+        } else {
+            this.lightPortalGroup(this.currentGroup);
+        }
 
     }
 
@@ -46,7 +55,11 @@ public final class ClockBlocked extends JavaPlugin implements Listener {
     public void onDisable() {
         // Advance portal on disable
         // This way rev start isn't off by one, and crashes won't advance it
-        this.advancePortal();
+        if (!this.multimode) {
+            this.advancePortal();
+        } else {
+            this.advancePortalGroup();
+        }
     }
 
 
@@ -61,11 +74,12 @@ public final class ClockBlocked extends JavaPlugin implements Listener {
 
             if (args.length < 1) {
                 sender.sendMessage(ChatColor.GOLD + "/clockblocked <subcommand>");
-                sender.sendMessage(ChatColor.GOLD + "current - " + ChatColor.WHITE + "Check current active portal.");
-                sender.sendMessage(ChatColor.GOLD + "cycle - " + ChatColor.WHITE + "Advance active portal by one.");
-                sender.sendMessage(ChatColor.GOLD + "list - " + ChatColor.WHITE + "List registered portals.");
+                sender.sendMessage(ChatColor.GOLD + "current - " + ChatColor.WHITE + "Check current active portal or group.");
+                sender.sendMessage(ChatColor.GOLD + "cycle - " + ChatColor.WHITE + "Advance active portal or group by one.");
+                sender.sendMessage(ChatColor.GOLD + "list - " + ChatColor.WHITE + "List registered portals and groups.");
                 sender.sendMessage(ChatColor.GOLD + "light <portal> - " + ChatColor.WHITE + "Make a specific portal active.");
                 sender.sendMessage(ChatColor.GOLD + "lightall - " + ChatColor.WHITE + "Open all registerd portals.");
+                sender.sendMessage(ChatColor.GOLD + "lightgroup <name> - " + ChatColor.WHITE + "Activate all portals in a group.");
                 sender.sendMessage(ChatColor.GOLD + "unlightall - " + ChatColor.WHITE + "Close all registerd portals.");
                 sender.sendMessage(ChatColor.GOLD + "reload - " + ChatColor.WHITE + "Reload plugin configuration.");
                 return true;
@@ -84,14 +98,30 @@ public final class ClockBlocked extends JavaPlugin implements Listener {
                     portals += p + ", ";
                 }
                 sender.sendMessage(ChatColor.GOLD + "ClockBlocked Portals: " + ChatColor.RESET + portals);
+                if (this.multimode) {
+                    String groupStr = "";
+                    List<String> groups = new ArrayList<String>();
+                    groups.addAll(this.portalGroups.getKeys(false));
+                    for (String g : groups) {
+                        groupStr += g + ", ";
+                    }
+                    sender.sendMessage(ChatColor.GOLD + "ClockBlocked Groups: " + ChatColor.RESET + groupStr);
+                }
                 return true;
             }
 
             if (args[0].equalsIgnoreCase("cycle")) {
-                this.advancePortal();
-                this.unlightPortals();
-                this.lightPortal(this.currentPortal);
-                sender.sendMessage(ChatColor.GOLD + "Lit portal " + this.currentPortal);
+                if (!this.multimode) {
+                    this.advancePortal();
+                    this.unlightPortals();
+                    this.lightPortal(this.currentPortal);
+                    sender.sendMessage(ChatColor.GOLD + "Lit portal " + this.currentPortal);
+                } else {
+                    this.advancePortalGroup();
+                    this.unlightPortals();
+                    this.lightPortalGroup(this.currentGroup);
+                    sender.sendMessage(ChatColor.GOLD + "Lit portals in group " + this.currentGroup);
+                }
                 return true;
             }
 
@@ -119,6 +149,28 @@ public final class ClockBlocked extends JavaPlugin implements Listener {
                 return true;
             }
 
+            if (args[0].equalsIgnoreCase("lightgroup")) {
+                if (!this.multimode) {
+                    sender.sendMessage(ChatColor.RED + "Multimode is not enabled.");
+                    return true;
+                }
+                if (args.length < 2) {
+                    sender.sendMessage(ChatColor.GOLD + "Usage: /clockblocked lightgroup <name>");
+                    return true;
+                }
+                if (!this.portalGroups.contains(args[1])) {
+                    sender.sendMessage(ChatColor.RED + "That portal group was not found.");
+                    return true;
+                }
+                this.currentGroup = args[1];
+                this.getConfig().set("current_group", args[1]);
+                this.saveConfig();
+                this.unlightPortals();
+                this.lightPortalGroup(args[1]);
+                sender.sendMessage(ChatColor.GOLD + "Current portal group set to " + args[1]);
+                return true;
+            }
+
             if (args[0].equalsIgnoreCase("unlightall")) {
                 this.unlightPortals();
                 sender.sendMessage(ChatColor.GOLD + "Unlit all registered portals.");
@@ -126,7 +178,11 @@ public final class ClockBlocked extends JavaPlugin implements Listener {
             }
 
             if (args[0].equalsIgnoreCase("current")) {
-                sender.sendMessage(ChatColor.GOLD + "Current active portal: " + this.currentPortal);
+                if (!this.multimode) {
+                    sender.sendMessage(ChatColor.GOLD + "Current active portal: " + this.currentPortal);
+                } else {
+                    sender.sendMessage(ChatColor.GOLD + "Current active group: " + this.currentGroup);
+                }
                 return true;
             }
 
@@ -145,6 +201,21 @@ public final class ClockBlocked extends JavaPlugin implements Listener {
         this.getConfig().set("current_portal", this.currentPortal);
         this.saveConfig();
         return this.currentPortal;
+    }
+
+
+    public String advancePortalGroup() {
+        List<String> groups = new ArrayList<String>();
+        groups.addAll(this.portalGroups.getKeys(false));
+        Integer curIndex = groups.indexOf(this.currentGroup);
+        Integer nextIndex = curIndex + 1;
+        if (nextIndex >= groups.size()) {
+            nextIndex = 0;
+        }
+        this.currentGroup = groups.get(nextIndex);
+        this.getConfig().set("current_group", this.currentGroup);
+        this.saveConfig();
+        return this.currentGroup;
     }
 
 
@@ -172,6 +243,17 @@ public final class ClockBlocked extends JavaPlugin implements Listener {
                     } catch (Exception e) {
                         getLogger().warning("Could not light portal: " + portal);
                     }
+                }
+            }
+        }
+    }
+
+
+    public void lightPortalGroup(String groupToLight) {
+        for (String group : this.portalGroups.getKeys(false)) {
+            if (group.equals(groupToLight)) {
+                for (Object portal : this.portalGroups.getList(group)) {
+                    this.lightPortal(portal.toString());
                 }
             }
         }
@@ -221,8 +303,11 @@ public final class ClockBlocked extends JavaPlugin implements Listener {
 
     public void loadConfigData() {
         this.currentPortal = getConfig().getString("current_portal");
+        this.currentGroup = getConfig().getString("current_group");
         this.worldNames = getConfig().getStringList("worlds");
         this.portalRegions = getConfig().getStringList("portals");
+        this.portalGroups = getConfig().getConfigurationSection("groups");
+        this.multimode = getConfig().getBoolean("multimode");
     }
 
 

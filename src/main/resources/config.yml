@@ -2,6 +2,7 @@
 # Ensure that the regions are named identically in both worlds
 # Any air blocks in the region will be replaced
 # Only use cuboid regions
+
 worlds:
 - world
 - world_nether
@@ -10,7 +11,25 @@ portals:
 - clock_1
 - clock_2
 - clock_3
+- clock_4
+
+
+
+# Portal groups and multimode
+# If multimode is true, groups will cycle instead of individual portals
+
+multimode: false
+
+groups:
+  group_1:
+  - clock_1
+  - clock_4
+  group_2:
+  - clock_2
+  - clock_3
+
 
 
 # The currently active portal
 current_portal: clock_1
+current_group: group_1
