@@ -1,3 +1,10 @@
+# Cycle Timer
+# If restartmode is true, portals cycle on server restart. If false,
+# portals will cycle on a timer, defined in approximate minutes.
+restartmode: true
+timer_duration: 60
+
+
 # Portal worlds and WorldGuard regions
 # Ensure that the regions are named identically in both worlds
 # Any air blocks in the region will be replaced
@@ -33,3 +40,4 @@ groups:
 # The currently active portal
 current_portal: clock_1
 current_group: group_1
+last_cycle_time: 0

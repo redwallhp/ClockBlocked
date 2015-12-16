@@ -5,6 +5,7 @@ import com.sk89q.worldedit.EditSession;
 import com.sk89q.worldedit.blocks.BaseBlock;
 import com.sk89q.worldedit.bukkit.BukkitWorld;
 import com.sk89q.worldedit.regions.CuboidRegion;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -18,10 +19,7 @@ import com.sk89q.worldguard.protection.regions.ProtectedRegion;
 import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
 import com.sk89q.worldedit.bukkit.WorldEditPlugin;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public final class ClockBlocked extends JavaPlugin implements Listener {
 
@@ -32,6 +30,9 @@ public final class ClockBlocked extends JavaPlugin implements Listener {
     List<String> portalRegions;
     ConfigurationSection portalGroups;
     Boolean multimode;
+    Boolean restartmode;
+    int timerDuration;
+    long lastCycleTime;
 
 
     @Override
@@ -48,6 +49,10 @@ public final class ClockBlocked extends JavaPlugin implements Listener {
             this.lightPortalGroup(this.currentGroup);
         }
 
+        if (!this.restartmode) {
+            this.startPortalTimer();
+        }
+
     }
 
 
@@ -55,6 +60,8 @@ public final class ClockBlocked extends JavaPlugin implements Listener {
     public void onDisable() {
         // Advance portal on disable
         // This way rev start isn't off by one, and crashes won't advance it
+        Bukkit.getScheduler().cancelTasks(this);
+        if (!this.restartmode) return;
         if (!this.multimode) {
             this.advancePortal();
         } else {
@@ -301,6 +308,12 @@ public final class ClockBlocked extends JavaPlugin implements Listener {
     }
 
 
+    public void startPortalTimer() {
+        // Cycle the portals every x minutes
+        Bukkit.getScheduler().scheduleSyncRepeatingTask(this, new CycleTask(this), 1200, 1200);
+    }
+
+
     public void loadConfigData() {
         this.currentPortal = getConfig().getString("current_portal");
         this.currentGroup = getConfig().getString("current_group");
@@ -308,6 +321,9 @@ public final class ClockBlocked extends JavaPlugin implements Listener {
         this.portalRegions = getConfig().getStringList("portals");
         this.portalGroups = getConfig().getConfigurationSection("groups");
         this.multimode = getConfig().getBoolean("multimode");
+        this.restartmode = getConfig().getBoolean("restartmode");
+        this.timerDuration = getConfig().getInt("timer_duration");
+        this.lastCycleTime = getConfig().getLong("last_cycle_time", 0);
     }
 
 
