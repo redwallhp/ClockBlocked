@@ -1,6 +1,6 @@
 # ClockBlocked
 
-Creates a "wandering portal" that cycles from frame to frame on every server restart.
+Creates a "wandering portal" that cycles from frame to frame on every server restart (or every x minutes on a timer).
 
 ## Usage
 
